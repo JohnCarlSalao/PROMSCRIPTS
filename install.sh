@@ -24,8 +24,8 @@ check_docker_compose() {
 # Create project directory
 setup_directory() {
     echo "Setting up Prometheus-Grafana-ELK directory..."
-    mkdir -p prometheus-grafana-elk-docker
-    cd prometheus-grafana-elk-docker || exit
+    mkdir -p prometheus-grafana-elk-docker-node-exporter
+    cd prometheus-grafana-elk-docker-node-exporter || exit
 }
 
 # Create Prometheus configuration file
@@ -41,7 +41,10 @@ scrape_configs:
       - targets: ['prometheus:9090']
   - job_name: 'vsat'
     static_configs:
-    - targets: ['localhost:4000']
+    - targets: ['docker.for.mac.localhost:4000']
+  - job_name: node
+    static_configs:
+      - targets: ['localhost:9100'] 
 EOT
 }
 
@@ -74,7 +77,7 @@ EOT
 create_docker_compose_file() {
     echo "Creating Docker Compose file (docker-compose.yml)..."
     cat <<EOT > docker-compose.yml
-
+version: '3.7'
 
 services:
   prometheus:
@@ -146,6 +149,14 @@ services:
     depends_on:
       - elasticsearch
 
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    networks:
+      - monitoring
+
 volumes:
   grafana-data:
   es-data:
@@ -163,7 +174,7 @@ start_docker_compose() {
 }
 
 # Main execution
-echo "Starting Prometheus, Grafana, and ELK Stack Docker setup..."
+echo "Starting Prometheus, Grafana, ELK Stack, and Node Exporter Docker setup..."
 
 # Step 1: Check and install Docker if not installed
 check_docker
@@ -182,7 +193,8 @@ create_docker_compose_file
 # Step 5: Start Docker Compose
 start_docker_compose
 
-echo "Prometheus, Grafana, and ELK Stack setup is complete!"
+echo "Prometheus, Grafana, ELK Stack, and Node Exporter setup is complete!"
 echo "Prometheus is running on http://localhost:9090"
-echo "Grafana is running on http://localhost:30001(Default login: admin/admin)"
+echo "Grafana is running on http://localhost:3000 (Default login: admin/admin)"
 echo "Kibana is running on http://localhost:5601"
+echo "Node Exporter is running on http://localhost:9100"
