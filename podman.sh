@@ -1,23 +1,23 @@
 #!/bin/bash
 
-# Function to check if Docker is installed
-check_docker() {
-    if ! [ -x "$(command -v docker)" ]; then
-        echo "Docker is not installed. Installing Docker..."
+# Function to check if Podman is installed
+check_podman() {
+    if ! [ -x "$(command -v podman)" ]; then
+        echo "Podman is not installed. Installing Podman..."
         sudo apt-get update
-        sudo apt-get install -y docker.io
+        sudo apt-get install -y podman
     else
-        echo "Docker is already installed."
+        echo "Podman is already installed."
     fi
 }
 
-# Function to check if Docker Compose is installed
-check_docker_compose() {
-    if ! [ -x "$(command -v docker-compose)" ]; then
-        echo "Docker Compose is not installed. Installing Docker Compose..."
-        sudo apt-get install -y docker-compose
+# Function to check if Podman Compose is installed
+check_podman_compose() {
+    if ! [ -x "$(command -v podman-compose)" ]; then
+        echo "Podman Compose is not installed. Installing Podman Compose..."
+        sudo apt-get install -y podman-compose
     else
-        echo "Docker Compose is already installed."
+        echo "Podman Compose is already installed."
     fi
 }
 
@@ -25,7 +25,7 @@ check_docker_compose() {
 setup_directory() {
     echo "Setting up Prometheus-Grafana directory..."
     mkdir -p prometheus-grafana-docker
-    cd prometheus-grafana-docker || exit
+    cd prometheus-grafana-docker || { echo "Failed to enter directory"; exit 1; }
 }
 
 # Create Prometheus configuration file
@@ -45,10 +45,11 @@ scrape_configs:
 EOT
 }
 
-# Create Docker Compose file
-create_docker_compose_file() {
-    echo "Creating Docker Compose file (docker-compose.yml)..."
+# Create Podman Compose file
+create_podman_compose_file() {
+    echo "Creating Podman Compose file (docker-compose.yml)..."
     cat <<EOT > docker-compose.yml
+version: '3.7'
 
 services:
   prometheus:
@@ -91,30 +92,44 @@ networks:
 EOT
 }
 
-# Start Docker Compose services
-start_docker_compose() {
-    echo "Starting Docker containers with Docker Compose..."
-    docker-compose up -d
+# Start Podman Compose services
+start_podman_compose() {
+    echo "Starting containers with Podman Compose..."
+    podman compose up -d || { echo "Failed to start containers"; exit 1; }
+}
+
+# Ensure Podman is running
+check_podman_machine() {
+    if ! podman machine status | grep -q "running"; then
+        echo "Podman machine is not running. Starting Podman machine..."
+        podman machine init
+        podman machine start
+    else
+        echo "Podman machine is running."
+    fi
 }
 
 # Main execution
-echo "Starting Prometheus and Grafana Docker setup..."
+echo "Starting Prometheus and Grafana Podman setup..."
 
-# Step 1: Check and install Docker if not installed
-check_docker
+# Step 1: Check and install Podman if not installed
+check_podman
 
-# Step 2: Check and install Docker Compose if not installed
-check_docker_compose
+# Step 2: Check and install Podman Compose if not installed
+check_podman_compose
 
-# Step 3: Set up the project directory
+# Step 3: Ensure Podman machine is running
+check_podman_machine
+
+# Step 4: Set up the project directory
 setup_directory
 
-# Step 4: Create configuration files
+# Step 5: Create configuration files
 create_prometheus_config
-create_docker_compose_file
+create_podman_compose_file
 
-# Step 5: Start Docker Compose
-start_docker_compose
+# Step 6: Start Podman Compose
+start_podman_compose
 
 echo "Prometheus and Grafana setup is complete!"
 echo "Prometheus is running on http://localhost:9090"
